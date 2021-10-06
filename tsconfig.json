@@ -1,0 +1,17 @@
+  {
+    "compilerOptions": {
+      "target": "es2020",
+      "strict": true,
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+      "declarationMap": true,
+      "inlineSourceMap": false,
+      "inlineSources": false,
+      "declaration": true,
+      "moduleResolution": "node",
+      "module": "commonjs",
+      "removeComments": true,
+      "rootDir": "./src",
+      "outDir": "./dist",
+    }
+  }

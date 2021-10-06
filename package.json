@@ -1,0 +1,36 @@
+{
+  "name": "PixelBufferDiff",
+  "description": "Pbd (Pixel Buffer Diff) is a pixel buffer diff library designed for visual regression tests. Pbd is 8-10x faster than Pixelmatch and works as a drop-in replacement. Update your package.json, and import, to save significant time and money on your visual regression pipeline.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/microsoft/screenshots-diff-toolkit.git"
+  },
+  "keywords": [
+    "image",
+    "comparison",
+    "diff",
+    "pixel buffer",
+    "visual regression",
+    "pixelmatch",
+    "ressemble",
+    ""
+  ],
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc && terser ./dist/index.js -c -m --module  -o ./dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "devDependencies": {
+    "@types/pixelmatch": "*",
+    "@types/node": "^12.18.3",
+    "fast-png": "5.0.4",
+    "fast-glob": "3.2.7",
+    "jpeg-js": "0.4.3",
+    "pixelmatch": "5.2.1",
+    "prettier": "^2.1.2",
+    "terser": "5.9.0",
+    "typescript": "4.4.3"
+  }
+}
