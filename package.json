@@ -6,6 +6,11 @@
     "type": "git",
     "url": "git+https://github.com/p01/pixel-buffer-diff.git"
   },
+  "homepage": "https://github.com/p01/pixel-buffer-diff#readme",
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/p01/pixel-buffer-diff/issues"
+  },
   "keywords": [
     "image",
     "comparison",
@@ -13,8 +18,7 @@
     "pixel buffer",
     "visual regression",
     "pixelmatch",
-    "ressemble",
-    ""
+    "ressemble"
   ],
   "version": "1.0.0",
   "scripts": {

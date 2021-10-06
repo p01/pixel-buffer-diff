@@ -1,0 +1,5 @@
+src
+images
+dist/examples
+tsconfig.json
+*.d.ts.map
