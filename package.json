@@ -1,5 +1,5 @@
 {
-  "name": "PixelBufferDiff",
+  "name": "pixel-buffer-diff",
   "description": "Pbd (Pixel Buffer Diff) is a pixel buffer diff library designed for visual regression tests. Pbd is 8-10x faster than Pixelmatch and works as a drop-in replacement. Update your package.json, and import, to save significant time and money on your visual regression pipeline.",
   "license": "MIT",
   "repository": {
