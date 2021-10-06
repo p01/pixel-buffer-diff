@@ -4,7 +4,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/microsoft/screenshots-diff-toolkit.git"
+    "url": "git+https://github.com/p01/pixel-buffer-diff.git"
   },
   "keywords": [
     "image",
