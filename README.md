@@ -29,7 +29,7 @@ Having a single image to get full context can prove easier to integrate in your 
 
 ### Minimap overlay to spot isolated pixel changes
 
-Revie
+Since it can be difficult to spot subtle or isolated pixel differences in full size screenshots, **Pbd** can add a minimap, a low resolution, overlay on top of the diff to quickly locate the areas of interest and not miss any visual change.
 
 ### Hash of the changes for easier deduplication
 
@@ -43,12 +43,11 @@ Often times, visual tests run on your Continuous Integration pipeline will run o
 
 ## Demo images
 
-Baseline|Candidate|Side by side diff with overlay
+Baseline|Candidate|Side by side diff with minimap overlay
 -|-|-
 ![](images/baselines/2.png)|![](images/candidates/2.png)|![](images/baselines-candidates/2.png)
 ![](images/baselines/6.png)|![](images/candidates/6.png)|![](images/baselines-candidates/6.png)
 ![](images/baselines/7.png)|![](images/candidates/7.png)|![](images/baselines-candidates/7.png)
-![](images/baselines/circle.png)|![](images/candidates/circle.png)|![](images/baselines-candidates/circle.png)
 ![](images/baselines/cypress.png)|![](images/candidates/cypress.png)|![](images/baselines-candidates/cypress.png)
 ![](images/baselines/jpg/tiger.jpg)|![](images/candidates/jpg/tiger.jpg)|![](images/baselines-candidates/jpg/tiger.png)
 
