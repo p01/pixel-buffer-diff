@@ -10,7 +10,7 @@ export type Changed = {
   path: string;
   hash: number;
   diff: number;
-  cummulatedDelta: number;
+  cumulatedDelta: number;
 };
 
 export type Report = {
@@ -102,7 +102,6 @@ for (let i = 0; i < irpBoth.length; i++) {
     data: new Uint8ClampedArray(width * height * 4 * mep),
   };
   const options = { threshold: 0.03, enableMinimap: true };
-  //const result = diff(bid, cid, diffPng.data, width, height, options);
   hrTimer.tick("diff images");
   const result = diffImageDatas(baselineImage, candidateImage, difxPng, options);
   hrTimer.tick("diff images");

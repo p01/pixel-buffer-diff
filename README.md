@@ -37,19 +37,19 @@ Since it can be difficult to spot subtle or isolated pixel differences in full s
 
 For instance, if you change the padding in a button that is used accross many visual components of your application, this simple change will be visible in all their screenshots. Thanks to the hash of the changes, your visual regression report can show this change just once and enable you and your team to focus on unique visual changes.
 
-### Cummulated  change to discard anti-aliasing differences
+### Cumulated change to discard anti-aliasing differences
 
-Often times, visual tests run on your Continuous Integration pipeline will run on different machines and show anti-aliasing differences ( small differences along the visible edges in your images ). Using the `threshold` of difference per pixel alone would show even the slightest difference. However **Pbd** returns the `cummulatedDelta`, the sum of threshold difference of every pixel change, to let you discard anti-aliasing changes which amount to 
+Often times, visual tests run on your Continuous Integration pipeline will run on different machines and show anti-aliasing differences ( small differences along the visible edges in your images ). Using the `threshold` of difference per pixel alone would show even the slightest difference. However **Pbd** returns the `cumulatedDelta`, the sum of threshold difference of every pixel change, to let you discard anti-aliasing changes which amount to 
 
 ## Demo images
 
 Baseline|Candidate|Side by side diff with minimap overlay
 -|-|-
-![](images/baselines/2.png)|![](images/candidates/2.png)|![](images/baselines-candidates/2.png)
-![](images/baselines/6.png)|![](images/candidates/6.png)|![](images/baselines-candidates/6.png)
-![](images/baselines/7.png)|![](images/candidates/7.png)|![](images/baselines-candidates/7.png)
-![](images/baselines/cypress.png)|![](images/candidates/cypress.png)|![](images/baselines-candidates/cypress.png)
-![](images/baselines/jpg/tiger.jpg)|![](images/candidates/jpg/tiger.jpg)|![](images/baselines-candidates/jpg/tiger.png)
+![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/baselines/2.png)|![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/candidates/2.png)|![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/baselines-candidates/2.png)
+![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/baselines/6.png)|![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/candidates/6.png)|![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/baselines-candidates/6.png)
+![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/baselines/7.png)|![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/candidates/7.png)|![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/baselines-candidates/7.png)
+![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/baselines/cypress.png)|![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/candidates/cypress.png)|![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/baselines-candidates/cypress.png)
+![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/baselines/jpg/tiger.jpg)|![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/candidates/jpg/tiger.jpg)|![](https://raw.githubusercontent.com/p01/pixel-buffer-diff/main/images/baselines-candidates/jpg/tiger.png)
 
 
 Images courtesy of Pixematch and odiff
@@ -70,7 +70,7 @@ const diff: (
   width: number,
   height: number,
   options?: { threshold?: number; enableMinimap?: boolean }
-): { diff: number; hash: number; cummulatedDelta: number }
+): { diff: number; hash: number; cumulatedDelta: number }
 ```
 
 * `baseline8`, `candidate8` and `diff8` are `Uint8Array` or `Uint8ClampedArray` holding the 32bits pixel data for the baseline, candidate and diff images.
@@ -90,7 +90,7 @@ const diffImageDatas: (
   candidate: ImageData,
   diff: ImageData,
   options?: { threshold?: number, enableMinimap?: boolean,  }
-): { diff: number; hash: number; cummulatedDelta: number }
+): { diff: number; hash: number; cumulatedDelta: number }
 ```
 
 * `baseline`, `candidate` and `diff` are `ImageData` holding the 32bits pixel data for the baseline, candidate and diff images.
@@ -104,7 +104,7 @@ The `diff` and `diffImageDatas` methods mutate the diff pixel buffer they receiv
 
 * `diff` a number showing the number of pixels that exceeded the `threshold`
 * `hash` a numeric hash representing the pixel change between the two images. This hash allows to de-duplicate changes across multiple images to only show unique changes in your visual regression report and approval workflow. 
-* `cummulatedDelta` a number representing the cummulated difference of every pixel change in the two images. This 
+* `cumulatedDelta` a number representing the cumulated difference of every pixel change in the two images. This 
 
 
 
@@ -144,8 +144,8 @@ const result = diff(
 // Output the result
 console.log({...result});
 
-// Save the diff if the cummulated delta is significant
-if (result.cummulatedDelta > 16) {
+// Save the diff if the cumulated delta is significant
+if (result.cumulatedDelta > 16) {
   fs.writeFileSync("diff.png", fastPng.encode(diffPng as fastPng.IImageData));
 }
 ```

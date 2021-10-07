@@ -14,7 +14,7 @@ export const diffImageDatas = (
   candidate: ImageData,
   diff: ImageData,
   options?: { threshold?: number, enableMinimap?: boolean,  }
-): { diff: number; hash: number; cummulatedDelta: number } => {
+): { diff: number; hash: number; cumulatedDelta: number } => {
   const addMinimapOverlay = options && options.enableMinimap || MINIMAP_OVERLAY;
   const threshold = options && options.threshold || THRESHOLD;
   const { width, height } = baseline;
@@ -53,7 +53,7 @@ export const diffImageDatas = (
 
   let hash = 0;
   let hashStart = 0;
-  let cummulatedDelta = 0;
+  let cumulatedDelta = 0;
 
   // Quick approx of color theme to figure if the "new" pixels should be dark or light
   // Approx the area to a square and take 1 sample per 128 pixels
@@ -113,7 +113,7 @@ export const diffImageDatas = (
         miniMap[miniIndex]++;
         diffCount++;
         const dyAbs = Math.abs(dy);
-        cummulatedDelta += dyAbs / 35215;
+        cumulatedDelta += dyAbs / 35215;
         diff32[d32i] =
           (dy > 0 ? color32Added : color32Removed) +
           (Math.min(192, dyAbs * 8) << 24);
@@ -151,7 +151,7 @@ export const diffImageDatas = (
     }
   }
 
-  return { diff: diffCount, hash, cummulatedDelta };
+  return { diff: diffCount, hash, cumulatedDelta };
 };
 
 export const diff = (
@@ -161,7 +161,7 @@ export const diff = (
   width: number,
   height: number,
   options?: { threshold?: number; enableMinimap?: boolean }
-): { diff: number; hash: number; cummulatedDelta: number } => diffImageDatas({ width, height, data: baseline8 } as ImageData,
+): { diff: number; hash: number; cumulatedDelta: number } => diffImageDatas({ width, height, data: baseline8 } as ImageData,
   { width, height, data: candidate8 } as ImageData,
   { width: width * diff8.length / baseline8.length, height, data: diff8 } as ImageData, options);
 
