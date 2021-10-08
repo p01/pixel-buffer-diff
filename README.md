@@ -7,6 +7,8 @@ Additionaly, **Pbd** can detect changes visible accross multiple images, and ove
 
 Update your `package.json`, and import or require statements, to save significant time and money on your visual regression pipeline and approval workflow.
 
+[![npm package version](https://img.shields.io/npm/v/pixel-buffer-diff.svg?colorB=green)](https://www.npmjs.com/package/pixel-buffer-diff) [![npm bundle size](https://img.shields.io/bundlephobia/minzip/pixel-buffer-diff?color=green)](https://bundlephobia.com/package/pixel-buffer-diff)
+
 ## Usage
 
 ```typescript
