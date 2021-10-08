@@ -1,4 +1,7 @@
 # **Pixel-buffer-diff** aka **Pbd** 
+
+[![npm package version](https://img.shields.io/npm/v/pixel-buffer-diff.svg?label=npm+package)](https://www.npmjs.com/package/pixel-buffer-diff) [![npm bundle size](https://img.shields.io/bundlephobia/minzip/pixel-buffer-diff?label=bundle+size)](https://bundlephobia.com/package/pixel-buffer-diff)
+
 **Pbd** is a **Pixel Buffer Diff** library designed for visual regression tests. With zero dependencies and a bundle size under 2kb, **Pbd** works as a drop-in replacement for Pixelmatch and runs 8-10x faster.
 
 Unlike other image diffing library that only show which pixels changed, **Pbd** shows if pixel changes were actually added or removed according the brightness theme of the baseline image, and represent the pixel changes in a way similar to code changes in a Pull Request to provide more context for each pixel change and make the view more easily actionable.
@@ -7,7 +10,6 @@ Additionaly, **Pbd** can detect changes visible accross multiple images, and ove
 
 Update your `package.json`, and import or require statements, to save significant time and money on your visual regression pipeline and approval workflow.
 
-[![npm package version](https://img.shields.io/npm/v/pixel-buffer-diff.svg?colorB=green)](https://www.npmjs.com/package/pixel-buffer-diff) [![npm bundle size](https://img.shields.io/bundlephobia/minzip/pixel-buffer-diff?color=green)](https://bundlephobia.com/package/pixel-buffer-diff)
 
 ## Usage
 
