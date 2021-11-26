@@ -10,7 +10,7 @@ export type Changed = {
   path: string;
   hash: number;
   diff: number;
-  cumulatedDelta: number;
+  cumulatedDiff: number;
 };
 
 export type Report = {
@@ -88,11 +88,10 @@ console.log(
 for (let i = 0; i < irpBoth.length; i++) {
   const irp = irpBoth[i];
   const isPNG = irp.endsWith(".png");
-  console.log(irp +" "+ isPNG);
+
   const loadAsImageData = isPNG ? utils.loadPngAsImageData : utils.loadJpgAsImageData;
   const baselineImage = loadAsImageData(join(baselineFolder, irp));
   const candidateImage = loadAsImageData(join(candidateFolder, irp));
-
 
   const mep = 3;
   const { width, height } = baselineImage;

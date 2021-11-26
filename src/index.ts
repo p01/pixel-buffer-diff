@@ -3,6 +3,7 @@ const SideBySide = 2;
 const MINIMAP_OVERLAY = false;
 const MINIMAP_SCALE = 256;
 const THRESHOLD = 0.03;
+const CUMULATED_THRESHOLD = 16;
 const COLOR32_ADDED = 0x03f00cc00;
 const COLOR32_REMOVED = 0x03f0000ff;
 const COLOR32_MINIMAP = 0x0407f0000;
@@ -13,10 +14,11 @@ export const diffImageDatas = (
   baseline: ImageData,
   candidate: ImageData,
   diff: ImageData,
-  options?: { threshold?: number, enableMinimap?: boolean,  }
-): { diff: number; hash: number; cumulatedDelta: number } => {
+  options?: { threshold?: number, cumulatedThreshold?: number, enableMinimap?: boolean,  }
+): { diff: number; cumulatedDiff: number; hash: number } => {
   const addMinimapOverlay = options && options.enableMinimap || MINIMAP_OVERLAY;
   const threshold = options && options.threshold || THRESHOLD;
+  const cumulatedThreshold = options && options.cumulatedThreshold || CUMULATED_THRESHOLD;
   const { width, height } = baseline;
   const area = width * height;
   const baseline8 = baseline.data;
@@ -53,7 +55,7 @@ export const diffImageDatas = (
 
   let hash = 0;
   let hashStart = 0;
-  let cumulatedDelta = 0;
+  let cumulatedDiff = 0;
 
   // Quick approx of color theme to figure if the "new" pixels should be dark or light
   // Approx the area to a square and take 1 sample per 128 pixels
@@ -113,7 +115,7 @@ export const diffImageDatas = (
         miniMap[miniIndex]++;
         diffCount++;
         const dyAbs = Math.abs(dy);
-        cumulatedDelta += dyAbs / 35215;
+        cumulatedDiff += dyAbs / 35215;
         diff32[d32i] =
           (dy > 0 ? color32Added : color32Removed) +
           (Math.min(192, dyAbs * 8) << 24);
@@ -151,7 +153,11 @@ export const diffImageDatas = (
     }
   }
 
-  return { diff: diffCount, hash, cumulatedDelta };
+  if (cumulatedDiff > cumulatedThreshold) {
+    return { diff: diffCount, cumulatedDiff, hash };
+  }
+
+  return { diff: 0, cumulatedDiff: 0, hash: 0 };
 };
 
 export const diff = (
@@ -160,8 +166,8 @@ export const diff = (
   diff8: Uint8Array | Uint8ClampedArray,
   width: number,
   height: number,
-  options?: { threshold?: number; enableMinimap?: boolean }
-): { diff: number; hash: number; cumulatedDelta: number } => diffImageDatas({ width, height, data: baseline8 } as ImageData,
+  options?: { threshold?: number; cumulatedThreshold?: number, enableMinimap?: boolean }
+): { diff: number; cumulatedDiff: number; hash: number } => diffImageDatas({ width, height, data: baseline8 } as ImageData,
   { width, height, data: candidate8 } as ImageData,
   { width: width * diff8.length / baseline8.length, height, data: diff8 } as ImageData, options);
 

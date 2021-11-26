@@ -43,7 +43,7 @@ For instance, if you change the padding in a button that is used accross many vi
 
 ### Cumulated change to discard anti-aliasing differences
 
-Often times, visual tests run on your Continuous Integration pipeline will run on different machines and show anti-aliasing differences ( small differences along the visible edges in your images ). Using the `threshold` of difference per pixel alone would show even the slightest difference. However **Pbd** returns the `cumulatedDelta`, the sum of threshold difference of every pixel change, to let you discard anti-aliasing changes which amount to 
+Often times, visual tests that run on your Continuous Integration pipeline will run on different machines and show anti-aliasing differences ( small differences along the visible edges in your images ). Using the `threshold` of difference per pixel alone would show even the slightest difference. However **Pbd** returns the `cumulatedDiff`, the sum of threshold difference of every pixel change, to let you discard anti-aliasing changes which amount to 
 
 ## Demo images
 
@@ -73,14 +73,15 @@ const diff: (
   diff8: Uint8Array | Uint8ClampedArray,
   width: number,
   height: number,
-  options?: { threshold?: number; enableMinimap?: boolean }
-): { diff: number; hash: number; cumulatedDelta: number }
+  options?: { threshold?: number; cumulatedThreshold?: number; enableMinimap?: boolean }
+): { diff: number; hash: number; cumulatedDiff: number }
 ```
 
 * `baseline8`, `candidate8` and `diff8` are `Uint8Array` or `Uint8ClampedArray` holding the 32bits pixel data for the baseline, candidate and diff images.
 * `width` and `height` are the width and height of the images.
 * `options` is an optional argument with the following properties:
-  * `threshold` specifies the matching threshold between `0` and `1`. Smaller values make the comparison more sensitive. Defaults to `0.03` 
+  * `threshold` specifies the individual pixel matching threshold between `0` and `1`. Smaller values make the comparison more sensitive. Defaults to `0.03`
+  * `cumulatedThreshold` specifies the cumulated pixel matching threshold. Smaller values make the comparision more sensitive to anti-aliasing differences. Default to `16`
   *  `enabledMinimap` enables the low resolution overlay. Defaults to `false`
 
 ### The `diffImageDatas` method
@@ -93,13 +94,14 @@ const diffImageDatas: (
   baseline: ImageData,
   candidate: ImageData,
   diff: ImageData,
-  options?: { threshold?: number, enableMinimap?: boolean,  }
-): { diff: number; hash: number; cumulatedDelta: number }
+  options?: { threshold?: number, cumulatedThreshold?: number; enableMinimap?: boolean,  }
+): { diff: number; hash: number; cumulatedDiff: number }
 ```
 
 * `baseline`, `candidate` and `diff` are `ImageData` holding the 32bits pixel data for the baseline, candidate and diff images.
 * `options` is an optional argument with the following properties:
-  * `threshold` specifies the matching threshold between 0 and 1. Smaller values make the comparison more sensitive. Defaults to `0.03` 
+   * `threshold` specifies the individual pixel matching threshold between `0` and `1`. Smaller values make the comparison more sensitive. Defaults to `0.03`
+  * `cumulatedThreshold` specifies the cumulated pixel matching threshold. Smaller values make the comparision more sensitive to anti-aliasing differences. Default to `16`
   *  `enabledMinimap` enables the low resolution overlay. Defaults to `false`
 
 ### Return value of `diff` and `diffImageData`
@@ -108,7 +110,9 @@ The `diff` and `diffImageDatas` methods mutate the diff pixel buffer they receiv
 
 * `diff` a number showing the number of pixels that exceeded the `threshold`
 * `hash` a numeric hash representing the pixel change between the two images. This hash allows to de-duplicate changes across multiple images to only show unique changes in your visual regression report and approval workflow. 
-* `cumulatedDelta` a number representing the cumulated difference of every pixel change in the two images. This 
+* `cumulatedDiff` a number representing the cumulated difference of every pixel change in the two images. This can used to discard changes that only effect subtle differences like anti-aliasing pixels.
+
+These properties are all set to `0` if the two images are within the cumulatedThreshold.
 
 
 
@@ -149,7 +153,7 @@ const result = diff(
 console.log({...result});
 
 // Save the diff if the cumulated delta is significant
-if (result.cumulatedDelta > 16) {
+if (result.cumulatedDiff > 0) {
   fs.writeFileSync("diff.png", fastPng.encode(diffPng as fastPng.IImageData));
 }
 ```
