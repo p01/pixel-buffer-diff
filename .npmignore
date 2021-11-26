@@ -1,5 +1,6 @@
 src
 images
 dist/examples
+dist/*.png
 tsconfig.json
 *.d.ts.map
