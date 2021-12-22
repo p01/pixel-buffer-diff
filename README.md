@@ -132,7 +132,7 @@ const { width, height } = pngBaseline;
 
 // Create diff ImageData: 3x wider to get side by side diff
 const diffImageData = {
-  width,
+  width: 3 * width,
   height,
   data: new Uint8ClampedArray(3 * width * height * 4)
 };
@@ -154,7 +154,7 @@ console.log({...result});
 
 // Save the diff if the cumulated delta is significant
 if (result.cumulatedDiff > 0) {
-  fs.writeFileSync("diff.png", fastPng.encode(diffPng as fastPng.IImageData));
+  fs.writeFileSync("diff.png", fastPng.encode(diff as fastPng.IImageData));
 }
 ```
 
