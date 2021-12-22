@@ -3,7 +3,7 @@ const SideBySide = 2;
 const MINIMAP_OVERLAY = false;
 const MINIMAP_SCALE = 256;
 const THRESHOLD = 0.03;
-const CUMULATED_THRESHOLD = 16;
+const CUMULATED_THRESHOLD = .5;
 const COLOR32_ADDED = 0x03f00cc00;
 const COLOR32_REMOVED = 0x03f0000ff;
 const COLOR32_MINIMAP = 0x0407f0000;
@@ -82,8 +82,18 @@ export const diffImageDatas = (
   const miniMap = new Uint8ClampedArray(miniWidth * miniHeight);
   const d32iPadding = diffType === SideBySide ? width : 0;
   const d32iWidth = d32iPadding * 2 + width;
+  const maxDimension = Math.max(width, height);
+  const maxMiniDimension = Math.max(miniWidth, miniHeight);
+  const axisMiniIndex = new Uint32Array(maxDimension);
+
+  let miniIndex = 0;
+  for (let i=0;i<maxMiniDimension;i++) { 
+    axisMiniIndex.fill(i, miniIndex, Math.min(miniIndex + MINIMAP_SCALE,maxDimension ));
+    miniIndex += MINIMAP_SCALE;
+  }
+
   for (let y = 0; y < height; y++) {
-    let miniIndex = Math.floor(y / MINIMAP_SCALE) * miniWidth;
+    const miniIndexY = axisMiniIndex[y] * miniWidth;
     // For side-by-side diff, copy the baseline and candidate on the sides
     if (d32iPadding > 0) {
       diff32.set(new Uint32Array(bBuffer, b8i, width), d32i);
@@ -93,9 +103,6 @@ export const diffImageDatas = (
 
     let hashIndex = (y ^ HASH_SPREAD) * HASH_SPREAD;
     for (let x = 0; x < width; x++, d32i++, b32i++, b8i += 4, hashIndex++) {
-      if ((x % MINIMAP_SCALE) === MINIMAP_SCALE-1) {
-        miniIndex++;
-      }
       // Quick check against the Uint32
       if (baseline32[b32i] === candidate32[b32i]) {
         continue;
@@ -112,10 +119,11 @@ export const diffImageDatas = (
 
       const delta = dy * dy * 0.5053 + di * di * 0.299 + dq * dq * 0.1957;
       if (delta > deltaThreshold) {
+        const miniIndex = miniIndexY + axisMiniIndex[x];
         miniMap[miniIndex]++;
         diffCount++;
         const dyAbs = Math.abs(dy);
-        cumulatedDiff += dyAbs / 35215;
+        cumulatedDiff += dyAbs;
         diff32[d32i] =
           (dy > 0 ? color32Added : color32Removed) +
           (Math.min(192, dyAbs * 8) << 24);
@@ -129,6 +137,7 @@ export const diffImageDatas = (
     d32i += d32iPadding;
   }
   hash -= hashStart;
+  cumulatedDiff /= 256;
 
   // Apply minimap overlay
   if (addMinimapOverlay) {

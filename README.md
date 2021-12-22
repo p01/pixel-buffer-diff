@@ -81,7 +81,7 @@ const diff: (
 * `width` and `height` are the width and height of the images.
 * `options` is an optional argument with the following properties:
   * `threshold` specifies the individual pixel matching threshold between `0` and `1`. Smaller values make the comparison more sensitive. Defaults to `0.03`
-  * `cumulatedThreshold` specifies the cumulated pixel matching threshold. Smaller values make the comparision more sensitive to anti-aliasing differences. Default to `16`
+  * `cumulatedThreshold` specifies the cumulated pixel matching threshold. Smaller values make the comparision more sensitive to anti-aliasing differences. Default to `.5`
   *  `enabledMinimap` enables the low resolution overlay. Defaults to `false`
 
 ### The `diffImageDatas` method
@@ -101,7 +101,7 @@ const diffImageDatas: (
 * `baseline`, `candidate` and `diff` are `ImageData` holding the 32bits pixel data for the baseline, candidate and diff images.
 * `options` is an optional argument with the following properties:
    * `threshold` specifies the individual pixel matching threshold between `0` and `1`. Smaller values make the comparison more sensitive. Defaults to `0.03`
-  * `cumulatedThreshold` specifies the cumulated pixel matching threshold. Smaller values make the comparision more sensitive to anti-aliasing differences. Default to `16`
+  * `cumulatedThreshold` specifies the cumulated pixel matching threshold. Smaller values make the comparision more sensitive to anti-aliasing differences. Default to `.5`
   *  `enabledMinimap` enables the low resolution overlay. Defaults to `false`
 
 ### Return value of `diff` and `diffImageData`
