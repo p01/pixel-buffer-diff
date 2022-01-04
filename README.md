@@ -60,7 +60,41 @@ Images courtesy of Pixematch and odiff
 
 ## API
 
-**Pbd** exports two methods, `diff` and `diffImageDatas` which work as a drop in replacement for Pixelmatch or directly with ImageData objects. They are exactly the same in term of functionnality and return value, so use either at your convenience.
+**Pbd** exports two types for the diffing `Options` and `Results`, and two methods, `diff` and `diffImageDatas` which work as a drop in replacement for Pixelmatch or directly with ImageData objects. They are exactly the same in term of functionnality and return value, so use either at your convenience.
+
+### The `Options` type
+
+The `Options` type defines the options specifying how to diff pixel buffers and their output.
+
+```typescript
+type Options = {
+  threshold?: number;
+  cumulatedThreshold?: number;
+  enableMinimap?: boolean
+};
+```
+
+* `threshold` specifies the individual pixel matching threshold between `0` and `1`. Smaller values make the comparison more sensitive. Defaults to `0.03`
+* `cumulatedThreshold` specifies the cumulated pixel matching threshold. Smaller values make the comparision more sensitive to anti-aliasing differences. Default to `.5`
+*  `enableMinimap` enables the low resolution overlay. Defaults to `false`
+
+### The `Result` type
+
+The `Result` type defines the properties resulting from diffing two pixel buffers.
+
+```typescript
+type Result = {
+  diff: number;
+  cumulatedDiff: number;
+  hash: number
+};
+```
+
+* `diff` a number showing the number of pixels that exceeded the `threshold`
+* `hash` a numeric hash representing the pixel change between the two images. This hash allows to de-duplicate changes across multiple images to only show unique changes in your visual regression report and approval workflow. 
+* `cumulatedDiff` a number representing the cumulated difference of every pixel change in the two images. This can used to discard changes that only effect subtle differences like anti-aliasing pixels.
+
+These properties are all set to `0` if the two images are within the cumulatedThreshold.
 
 ### The `diff` method
 
@@ -73,16 +107,13 @@ const diff: (
   diff8: Uint8Array | Uint8ClampedArray,
   width: number,
   height: number,
-  options?: { threshold?: number; cumulatedThreshold?: number; enableMinimap?: boolean }
-): { diff: number; hash: number; cumulatedDiff: number }
+  options: Options = defaultOptions
+): Result
 ```
 
 * `baseline8`, `candidate8` and `diff8` are `Uint8Array` or `Uint8ClampedArray` holding the 32bits pixel data for the baseline, candidate and diff images.
 * `width` and `height` are the width and height of the images.
-* `options` is an optional argument with the following properties:
-  * `threshold` specifies the individual pixel matching threshold between `0` and `1`. Smaller values make the comparison more sensitive. Defaults to `0.03`
-  * `cumulatedThreshold` specifies the cumulated pixel matching threshold. Smaller values make the comparision more sensitive to anti-aliasing differences. Default to `.5`
-  *  `enabledMinimap` enables the low resolution overlay. Defaults to `false`
+* `options` defines how to diff the pixel buffers
 
 ### The `diffImageDatas` method
 
@@ -94,25 +125,17 @@ const diffImageDatas: (
   baseline: ImageData,
   candidate: ImageData,
   diff: ImageData,
-  options?: { threshold?: number, cumulatedThreshold?: number; enableMinimap?: boolean,  }
-): { diff: number; hash: number; cumulatedDiff: number }
+  options: Options = defaultOptions
+): Result
 ```
 
 * `baseline`, `candidate` and `diff` are `ImageData` holding the 32bits pixel data for the baseline, candidate and diff images.
-* `options` is an optional argument with the following properties:
-   * `threshold` specifies the individual pixel matching threshold between `0` and `1`. Smaller values make the comparison more sensitive. Defaults to `0.03`
-  * `cumulatedThreshold` specifies the cumulated pixel matching threshold. Smaller values make the comparision more sensitive to anti-aliasing differences. Default to `.5`
-  *  `enabledMinimap` enables the low resolution overlay. Defaults to `false`
+* `options` defines how to diff the pixel buffers
 
 ### Return value of `diff` and `diffImageData`
 
 The `diff` and `diffImageDatas` methods mutate the diff pixel buffer they receive as argument and return an object with the following properties:
 
-* `diff` a number showing the number of pixels that exceeded the `threshold`
-* `hash` a numeric hash representing the pixel change between the two images. This hash allows to de-duplicate changes across multiple images to only show unique changes in your visual regression report and approval workflow. 
-* `cumulatedDiff` a number representing the cumulated difference of every pixel change in the two images. This can used to discard changes that only effect subtle differences like anti-aliasing pixels.
-
-These properties are all set to `0` if the two images are within the cumulatedThreshold.
 
 
 

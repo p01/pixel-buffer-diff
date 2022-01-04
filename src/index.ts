@@ -1,24 +1,26 @@
 const DiffOnly = 1;
 const SideBySide = 2;
-const MINIMAP_OVERLAY = false;
 const MINIMAP_SCALE = 256;
-const THRESHOLD = 0.03;
-const CUMULATED_THRESHOLD = .5;
 const COLOR32_ADDED = 0x03f00cc00;
 const COLOR32_REMOVED = 0x03f0000ff;
 const COLOR32_MINIMAP = 0x0407f0000;
 const HASH_SPREAD = 0x0f0731337;
+
+export type Result = { diff: number; cumulatedDiff: number; hash: number };
+export type Options = { threshold?: number; cumulatedThreshold?: number; enableMinimap?: boolean };
+const defaultOptions: Options = { threshold: 0.03, cumulatedThreshold: .5, enableMinimap: false };
 
 /* PBD: Pixel Buffer Diff  */
 export const diffImageDatas = (
   baseline: ImageData,
   candidate: ImageData,
   diff: ImageData,
-  options?: { threshold?: number, cumulatedThreshold?: number, enableMinimap?: boolean,  }
-): { diff: number; cumulatedDiff: number; hash: number } => {
-  const addMinimapOverlay = options && options.enableMinimap || MINIMAP_OVERLAY;
-  const threshold = options && options.threshold || THRESHOLD;
-  const cumulatedThreshold = options && options.cumulatedThreshold || CUMULATED_THRESHOLD;
+  options: Options = defaultOptions
+): Result => {
+  if (options.threshold === undefined || options.cumulatedThreshold === undefined || options.enableMinimap === undefined) {
+    throw new Error("Invalid options");
+  }
+
   const { width, height } = baseline;
   const area = width * height;
   const baseline8 = baseline.data;
@@ -46,7 +48,7 @@ export const diffImageDatas = (
   const diff32 = new Uint32Array(dBuffer, 0, d8l >> 2);
   // maximum acceptable square distance between two colors;
   // 35215 is the maximum possible value for the YIQ difference metric
-  const deltaThreshold = threshold * threshold * 35215;
+  const deltaThreshold = options.threshold * options.threshold * 35215;
 
   let b8i = 0;
   let b32i = 0;
@@ -140,7 +142,7 @@ export const diffImageDatas = (
   cumulatedDiff /= 256;
 
   // Apply minimap overlay
-  if (addMinimapOverlay) {
+  if (options.enableMinimap) {
     for (let i=0; i < miniWidth * miniHeight; i++) {
       const value = miniMap[i]
       if (value > 0) {
@@ -162,7 +164,7 @@ export const diffImageDatas = (
     }
   }
 
-  if (cumulatedDiff > cumulatedThreshold) {
+  if (cumulatedDiff > options.cumulatedThreshold) {
     return { diff: diffCount, cumulatedDiff, hash };
   }
 
@@ -175,8 +177,8 @@ export const diff = (
   diff8: Uint8Array | Uint8ClampedArray,
   width: number,
   height: number,
-  options?: { threshold?: number; cumulatedThreshold?: number, enableMinimap?: boolean }
-): { diff: number; cumulatedDiff: number; hash: number } => diffImageDatas({ width, height, data: baseline8 } as ImageData,
+  options: Options = defaultOptions
+): Result => diffImageDatas({ width, height, data: baseline8 } as ImageData,
   { width, height, data: candidate8 } as ImageData,
   { width: width * diff8.length / baseline8.length, height, data: diff8 } as ImageData, options);
 
