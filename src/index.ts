@@ -8,18 +8,17 @@ const HASH_SPREAD = 0x0f0731337;
 
 export type Result = { diff: number; cumulatedDiff: number; hash: number };
 export type Options = { threshold?: number; cumulatedThreshold?: number; enableMinimap?: boolean };
-const defaultOptions: Options = { threshold: 0.03, cumulatedThreshold: .5, enableMinimap: false };
 
 /* PBD: Pixel Buffer Diff  */
 export const diffImageDatas = (
   baseline: ImageData,
   candidate: ImageData,
   diff: ImageData,
-  options: Options = defaultOptions
+  options: Options
 ): Result => {
-  if (options.threshold === undefined || options.cumulatedThreshold === undefined || options.enableMinimap === undefined) {
-    throw new Error("Invalid options");
-  }
+  if (options.threshold === undefined) { options.threshold = 0.3; }
+  if (options.cumulatedThreshold === undefined) { options.cumulatedThreshold = .5; }
+  if (options.enableMinimap === undefined) { options.enableMinimap = false; }
 
   const { width, height } = baseline;
   const area = width * height;
@@ -89,8 +88,8 @@ export const diffImageDatas = (
   const axisMiniIndex = new Uint32Array(maxDimension);
 
   let miniIndex = 0;
-  for (let i=0;i<maxMiniDimension;i++) { 
-    axisMiniIndex.fill(i, miniIndex, Math.min(miniIndex + MINIMAP_SCALE,maxDimension ));
+  for (let i = 0; i < maxMiniDimension; i++) {
+    axisMiniIndex.fill(i, miniIndex, Math.min(miniIndex + MINIMAP_SCALE, maxDimension));
     miniIndex += MINIMAP_SCALE;
   }
 
@@ -143,7 +142,7 @@ export const diffImageDatas = (
 
   // Apply minimap overlay
   if (options.enableMinimap) {
-    for (let i=0; i < miniWidth * miniHeight; i++) {
+    for (let i = 0; i < miniWidth * miniHeight; i++) {
       const value = miniMap[i]
       if (value > 0) {
         const miniX = i % miniWidth;
@@ -155,10 +154,10 @@ export const diffImageDatas = (
         d32i = x0 + y0 * d32iWidth + d32iPadding;
         const d32iYinc = d32iWidth - x1 + x0;
         for (let y = y0; y < y1; y++) {
-            for (let x = x0; x < x1; x++) {
-              diff32[d32i++] |= COLOR32_MINIMAP;
-            }
-            d32i += d32iYinc;
+          for (let x = x0; x < x1; x++) {
+            diff32[d32i++] |= COLOR32_MINIMAP;
+          }
+          d32i += d32iYinc;
         }
       }
     }
@@ -177,7 +176,7 @@ export const diff = (
   diff8: Uint8Array | Uint8ClampedArray,
   width: number,
   height: number,
-  options: Options = defaultOptions
+  options: Options
 ): Result => diffImageDatas({ width, height, data: baseline8 } as ImageData,
   { width, height, data: candidate8 } as ImageData,
   { width: width * diff8.length / baseline8.length, height, data: diff8 } as ImageData, options);

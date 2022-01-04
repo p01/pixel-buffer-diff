@@ -78,24 +78,6 @@ type Options = {
 * `cumulatedThreshold` specifies the cumulated pixel matching threshold. Smaller values make the comparision more sensitive to anti-aliasing differences. Default to `.5`
 *  `enableMinimap` enables the low resolution overlay. Defaults to `false`
 
-### The `Result` type
-
-The `Result` type defines the properties resulting from diffing two pixel buffers.
-
-```typescript
-type Result = {
-  diff: number;
-  cumulatedDiff: number;
-  hash: number
-};
-```
-
-* `diff` a number showing the number of pixels that exceeded the `threshold`
-* `hash` a numeric hash representing the pixel change between the two images. This hash allows to de-duplicate changes across multiple images to only show unique changes in your visual regression report and approval workflow. 
-* `cumulatedDiff` a number representing the cumulated difference of every pixel change in the two images. This can used to discard changes that only effect subtle differences like anti-aliasing pixels.
-
-These properties are all set to `0` if the two images are within the cumulatedThreshold.
-
 ### The `diff` method
 
 The `diff` method is a drop in replacement for Pixelmatch.
@@ -134,10 +116,25 @@ const diffImageDatas: (
 
 ### Return value of `diff` and `diffImageData`
 
-The `diff` and `diffImageDatas` methods mutate the diff pixel buffer they receive as argument and return an object with the following properties:
+The `diff` and `diffImageDatas` methods mutate the diff pixel buffer they receive as argument and return a `Result` object.
 
+### The `Result` type
 
+The `Result` type defines the properties resulting from diffing two pixel buffers.
 
+```typescript
+type Result = {
+  diff: number;
+  cumulatedDiff: number;
+  hash: number
+};
+```
+
+* `diff` a number showing the number of pixels that exceeded the `threshold`
+* `hash` a numeric hash representing the pixel change between the two images. This hash allows to de-duplicate changes across multiple images to only show unique changes in your visual regression report and approval workflow. 
+* `cumulatedDiff` a number representing the cumulated difference of every pixel change in the two images. This can used to discard changes that only effect subtle differences like anti-aliasing pixels.
+
+These properties are all set to `0` if the two images are within the cumulatedThreshold.
 
 ## Example usage
 
