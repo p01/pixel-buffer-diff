@@ -1,9 +1,9 @@
 const DiffOnly = 1;
 const SideBySide = 2;
-const MINIMAP_SCALE = 256;
+const MINIMAP_SCALE = 128;
 const COLOR32_ADDED = 0x03f00cc00;
 const COLOR32_REMOVED = 0x03f0000ff;
-const COLOR32_MINIMAP = 0x0407f0000;
+const COLOR32_MINIMAP = 0x0207f0000;
 const HASH_SPREAD = 0x0f0731337;
 
 export type Result = { diff: number; cumulatedDiff: number; hash: number };
@@ -16,7 +16,7 @@ export const diffImageDatas = (
   diff: ImageData,
   options: Options
 ): Result => {
-  if (options.threshold === undefined) { options.threshold = 0.3; }
+  if (options.threshold === undefined) { options.threshold = 0.03; }
   if (options.cumulatedThreshold === undefined) { options.cumulatedThreshold = .5; }
   if (options.enableMinimap === undefined) { options.enableMinimap = false; }
 
