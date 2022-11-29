@@ -99,6 +99,7 @@ for (let i = 0; i < irpBoth.length; i++) {
     width: width * mep,
     height,
     data: new Uint8ClampedArray(width * height * 4 * mep),
+    colorSpace: "srgb",
   };
   const options = { threshold: 0.03, enableMinimap: true };
   hrTimer.tick("diff images");
@@ -113,7 +114,7 @@ for (let i = 0; i < irpBoth.length; i++) {
     report.changed.push(change);
 
     hrTimer.tick("encode images");
-    const pngBuffer = fastPng.encode(difxPng as fastPng.IImageData);
+    const pngBuffer = fastPng.encode(difxPng as fastPng.ImageData);
     hrTimer.tick("encode images");
 
     const difxPath = join(diffFolder, irp.replace(/\.[a-z]+$/, ".png"));
