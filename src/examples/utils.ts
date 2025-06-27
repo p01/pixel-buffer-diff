@@ -58,3 +58,37 @@ export const loadPngAsImageData = (path: string): ImageData => {
 
   return {width, height, data} as ImageData;
 };
+
+export const padImageDataTo16 = (src: ImageData): ImageData => {
+  const width = Math.ceil(src.width / 16) * 16; 
+  const height = Math.ceil(src.height / 16) * 16; 
+  if (src.width === width && src.height === height) {
+    return src;
+  }
+  const data = new Uint8ClampedArray(width * height * 4);
+  const data32 = new Uint32Array(data.buffer, 0, width * height);
+  const dst = {width, height, data} as ImageData;
+
+  const paddingARGB = 0x0ff7f7f7f;
+
+  // Vertical padding
+  data32.fill(paddingARGB, width * src.height, width * height);
+
+  if (src.width === width) {
+    return dst;
+  }
+
+  // Horizontal padding
+  const srcWidthX4 = src.width * 4;
+  for (let y = 0; y <src.height; y++) {
+    const srcIndex = y * srcWidthX4;
+    const dstIndex32 = y * width;
+    const dstIndex = dstIndex32 * 4;
+    // copy the src
+    data.set(src.data.subarray(srcIndex, srcWidthX4), dstIndex);
+    // pad
+    data32.fill(paddingARGB, dstIndex32 + srcWidthX4, dstIndex32 + width);
+  }
+
+  return dst;
+}

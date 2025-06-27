@@ -90,8 +90,13 @@ for (let i = 0; i < irpBoth.length; i++) {
   const isPNG = irp.endsWith(".png");
 
   const loadAsImageData = isPNG ? utils.loadPngAsImageData : utils.loadJpgAsImageData;
-  const baselineImage = loadAsImageData(join(baselineFolder, irp));
-  const candidateImage = loadAsImageData(join(candidateFolder, irp));
+  const baselineImageUnpadded = loadAsImageData(join(baselineFolder, irp));
+  const candidateImageUnpadded = loadAsImageData(join(candidateFolder, irp));
+
+  hrTimer.tick("padImageDataTo16");
+  const baselineImage = utils.padImageDataTo16(baselineImageUnpadded);
+  const candidateImage = utils.padImageDataTo16(candidateImageUnpadded);
+  hrTimer.tick("padImageDataTo16");
 
   const mep = 3;
   const { width, height } = baselineImage;
@@ -101,7 +106,7 @@ for (let i = 0; i < irpBoth.length; i++) {
     data: new Uint8ClampedArray(width * height * 4 * mep),
     colorSpace: "srgb",
   };
-  const options = { threshold: 0.03, enableMinimap: true };
+  const options = { threshold: 0.03, enableMinimap: true, mode: "ssim" };
   hrTimer.tick("diff images");
   const result = diffImageDatas(baselineImage, candidateImage, difxPng, options);
   hrTimer.tick("diff images");
