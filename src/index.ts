@@ -86,9 +86,24 @@ export const diffImageDatas = (
   const isDarkTheme = averageBrightness < 128;
   const color32Added = isDarkTheme ? COLOR32_ADDED : COLOR32_REMOVED;
   const color32Removed = isDarkTheme ? COLOR32_REMOVED : COLOR32_ADDED;
+  const color32Minimap = enableMinimap ? COLOR32_MINIMAP : 0;
+
+  const d32iPadding = diffType === SideBySide ? width : 0;
+  const d32iWidth = d32iPadding * 2 + width;
 
   if (mode === "ssim") {
     // SSIM diff by 16x16 patch
+    const ssimThreshold = 1 - threshold ** .5;
+
+    // Prepare the diff buffer
+    if (diffType === SideBySide) {
+      for (let y = 0; y < height; y++) {
+        const index32 = y * width;
+        const diffIndex32 = index32 * 3;
+        diff32.set(new Uint32Array(baseline32, index32, width), diffIndex32);
+        diff32.set(new Uint32Array(candidate32, index32, width), diffIndex32 + width + width);
+      }
+    }
 
     // prepare patch offsets to walk within the patches
     const patchOffsets32 = [];
@@ -106,6 +121,7 @@ export const diffImageDatas = (
     const C2 = (K2 * 255) ** 2;
     // Walk each patch, track the lowest SSIM aka lowest similarity
     let lowestSsim = 1;
+    let diffCount = 0;
     for (let y = 0; y < height; y += 16) {
       for (let x = 0; x < width; x += 16) {
         const index32 = x + y * width;
@@ -122,10 +138,12 @@ export const diffImageDatas = (
           // Single pass computation
           const index8 = index32 * 4;
           let sum1 = 0, sum2 = 0, sum1Sq = 0, sum2Sq = 0, sum12 = 0;
+          const patchDiff = [];
           for (let i = 0; i < 256; i++) {
             const indexPlusOffset8 = index8 + patchOffsets8[i];
             const bY = baseline8[indexPlusOffset8] * 0.29889531 + baseline8[indexPlusOffset8 + 1] * 0.58662247 + baseline8[indexPlusOffset8 + 2] * 0.11448223;;
             const cY = candidate8[indexPlusOffset8] * 0.29889531 + candidate8[indexPlusOffset8 + 1] * 0.58662247 + candidate8[indexPlusOffset8 + 2] * 0.11448223;;
+            patchDiff.push(cY - bY);
 
             sum1 += bY;
             sum2 += cY;
@@ -146,26 +164,37 @@ export const diffImageDatas = (
           const denominator = (mu1Sq + mu2Sq + C1) * (sigma1Sq + sigma2Sq + C2);
           ssim = numerator / denominator;
           // track the lowest ssim score = lowest (local) similarity
+          if (ssim < ssimThreshold) {
+            // Update the diff32 buffer with red/green diff + minimap
+            const diffIndex32 = x + y * d32iWidth + d32iPadding;
+            for (let i = 0; i < 256; i++) {
+              const dy = patchDiff[i];
+              const dyAbs = Math.abs(dy);
+              if (dyAbs > threshold) {
+                diffCount++;
+              }
+              diff32[diffIndex32 + patchOffsets32[i]] = (
+                  (dy > 0 ? color32Added : color32Removed)
+                  + (Math.min(192, dyAbs * 8) << 24)
+                ) | color32Minimap;
+            }
+          }
           if (ssim < lowestSsim) {
             lowestSsim = ssim;
           }
         }
-
-        // TODO update diff image
-
       }
     }
 
-
-
+    if (lowestSsim < 1) {
+      return {diff: diffCount, cumulatedDiff: 1 - lowestSsim, hash: 0};
+    }
   } else {
     // Diff every pixel
     b8i = 0;
     const miniHeight = Math.ceil(height / MINIMAP_SCALE);
     const miniWidth = Math.ceil(width / MINIMAP_SCALE);
     const miniMap = new Uint8ClampedArray(miniWidth * miniHeight);
-    const d32iPadding = diffType === SideBySide ? width : 0;
-    const d32iWidth = d32iPadding * 2 + width;
     const maxDimension = Math.max(width, height);
     const maxMiniDimension = Math.max(miniWidth, miniHeight);
     const axisMiniIndex = new Uint32Array(maxDimension);
