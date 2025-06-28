@@ -88,6 +88,7 @@ console.log(
 for (let i = 0; i < irpBoth.length; i++) {
   const irp = irpBoth[i];
   const isPNG = irp.endsWith(".png");
+  console.log(`🖼️  ${irp}`);
 
   const loadAsImageData = isPNG ? utils.loadPngAsImageData : utils.loadJpgAsImageData;
   const baselineImageUnpadded = loadAsImageData(join(baselineFolder, irp));

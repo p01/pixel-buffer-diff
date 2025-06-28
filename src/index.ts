@@ -93,26 +93,33 @@ export const diffImageDatas = (
 
   if (mode === "ssim") {
     // SSIM diff by 16x16 patch
-    const ssimThreshold = 1 - threshold ** .5;
+    //const ssimThreshold = 1 - threshold;// ** .5;
+    console.log(`${width} x ${height}`);
 
     // Prepare the diff buffer
     if (diffType === SideBySide) {
       for (let y = 0; y < height; y++) {
         const index32 = y * width;
         const diffIndex32 = index32 * 3;
-        diff32.set(new Uint32Array(baseline32, index32, width), diffIndex32);
-        diff32.set(new Uint32Array(candidate32, index32, width), diffIndex32 + width + width);
+        const baseline32Span = baseline32.slice(index32, index32 + width);
+        diff32.set(baseline32Span, diffIndex32);
+        const candidate32Span = candidate32.slice(index32, index32 + width);
+        diff32.set(candidate32Span, diffIndex32 + width + width);
       }
     }
 
     // prepare patch offsets to walk within the patches
+    const patchOffsets8 = [];
     const patchOffsets32 = [];
+    const patchOffsetsDiff32 = [];
     for (let y = 0; y < 16; y++) {
       for (let x = 0; x < 16; x++) {
+        patchOffsetsDiff32.push(x + y * d32iWidth)
         patchOffsets32.push(x + y * width);
+        patchOffsets8.push((x + y * width) * 4);
       }
     }
-    const patchOffsets8 = patchOffsets32.map(v => v * 4);
+    // const patchOffsets8 = patchOffsets32.map(v => v * 4);
 
     // SSIM constants
     const K1 = 0.01;
@@ -126,14 +133,13 @@ export const diffImageDatas = (
       for (let x = 0; x < width; x += 16) {
         const index32 = x + y * width;
 
-        let ssim = 1;
         // Quick check using RGBA32 values
         let breakAndComputeSsim = false;
         for (let i = 0; i < 256 && !breakAndComputeSsim; i++) {
           const indexPlusOffset32 = index32 + patchOffsets32[i];
           breakAndComputeSsim = baseline32[indexPlusOffset32] !== candidate32[indexPlusOffset32];
         }
-        if (breakAndComputeSsim) {
+        if (breakAndComputeSsim || true) {
           // walk patch on 8bits valuse to compute the Y, and SSIM
           // Single pass computation
           const index8 = index32 * 4;
@@ -141,8 +147,8 @@ export const diffImageDatas = (
           const patchDiff = [];
           for (let i = 0; i < 256; i++) {
             const indexPlusOffset8 = index8 + patchOffsets8[i];
-            const bY = baseline8[indexPlusOffset8] * 0.29889531 + baseline8[indexPlusOffset8 + 1] * 0.58662247 + baseline8[indexPlusOffset8 + 2] * 0.11448223;;
-            const cY = candidate8[indexPlusOffset8] * 0.29889531 + candidate8[indexPlusOffset8 + 1] * 0.58662247 + candidate8[indexPlusOffset8 + 2] * 0.11448223;;
+            const bY = baseline8[indexPlusOffset8] * 0.299 + baseline8[indexPlusOffset8 + 1] * 0.587 + baseline8[indexPlusOffset8 + 2] * 0.114;
+            const cY = candidate8[indexPlusOffset8] * 0.299 + candidate8[indexPlusOffset8 + 1] * 0.587 + candidate8[indexPlusOffset8 + 2] * 0.114;
             patchDiff.push(cY - bY);
 
             sum1 += bY;
@@ -162,9 +168,9 @@ export const diffImageDatas = (
           // Compute SSIM
           const numerator = (2 * mu12 + C1) * (2 * sigma12 + C2);
           const denominator = (mu1Sq + mu2Sq + C1) * (sigma1Sq + sigma2Sq + C2);
-          ssim = numerator / denominator;
+          const ssim = numerator / denominator;
           // track the lowest ssim score = lowest (local) similarity
-          if (ssim < ssimThreshold) {
+          if (ssim < 1) {
             // Update the diff32 buffer with red/green diff + minimap
             const diffIndex32 = x + y * d32iWidth + d32iPadding;
             for (let i = 0; i < 256; i++) {
@@ -173,9 +179,9 @@ export const diffImageDatas = (
               if (dyAbs > threshold) {
                 diffCount++;
               }
-              diff32[diffIndex32 + patchOffsets32[i]] = (
+              diff32[diffIndex32 + patchOffsetsDiff32[i]] = (
                   (dy > 0 ? color32Added : color32Removed)
-                  + (Math.min(192, dyAbs * 8) << 24)
+                  + (Math.min(192, dyAbs * 2) << 24)
                 ) | color32Minimap;
             }
           }
@@ -185,10 +191,11 @@ export const diffImageDatas = (
         }
       }
     }
-
+    console.log(`lowestSsim = ${lowestSsim}`);
     if (lowestSsim < 1) {
       return {diff: diffCount, cumulatedDiff: 1 - lowestSsim, hash: 0};
     }
+      return {diff: 1337, cumulatedDiff: .42, hash: 0};
   } else {
     // Diff every pixel
     b8i = 0;
