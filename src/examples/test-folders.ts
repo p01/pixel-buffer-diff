@@ -94,10 +94,7 @@ for (let i = 0; i < irpBoth.length; i++) {
   const baselineImageUnpadded = loadAsImageData(join(baselineFolder, irp));
   const candidateImageUnpadded = loadAsImageData(join(candidateFolder, irp));
 
-  hrTimer.tick("padImageDataTo16");
-  const baselineImage = utils.padImageDataTo16(baselineImageUnpadded);
-  const candidateImage = utils.padImageDataTo16(candidateImageUnpadded);
-  hrTimer.tick("padImageDataTo16");
+  const [baselineImage, candidateImage] = utils.matchDimensions(baselineImageUnpadded, candidateImageUnpadded, 64);
 
   const mep = 3;
   const { width, height } = baselineImage;
