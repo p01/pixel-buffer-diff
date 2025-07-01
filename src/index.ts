@@ -7,7 +7,7 @@ const COLOR32_MINIMAP = 0x0207f0000;
 const HASH_SPREAD = 0x0f0731337;
 
 export type Result = { diff: number; cumulatedDiff: number; hash: number };
-export type Options = { threshold?: number; cumulatedThreshold?: number; enableMinimap?: boolean };
+export type Options = { threshold: number; cumulatedThreshold?: number; enableMinimap?: boolean, mode?: string };
 
 /* PBD: Pixel Buffer Diff  */
 export const diffImageDatas = (
@@ -16,9 +16,10 @@ export const diffImageDatas = (
   diff: ImageData,
   options: Options
 ): Result => {
-  if (options.threshold === undefined) { options.threshold = 0.03; }
-  if (options.cumulatedThreshold === undefined) { options.cumulatedThreshold = .5; }
-  if (options.enableMinimap === undefined) { options.enableMinimap = false; }
+  const threshold = options.threshold ?? 0.03;
+  const cumulatedThreshold = options.cumulatedThreshold ?? 0.5;
+  const enableMinimap = options.enableMinimap ?? false;
+  const mode = options.mode ?? "basic";
 
   const { width, height } = baseline;
   const area = width * height;
@@ -32,11 +33,17 @@ export const diffImageDatas = (
   if (width !== candidate.width || height !== candidate.height || area * 4 !== b8l || b8l !== c8l) {
     throw new Error("Different baseline and candidate ImageData dimensions");
   }
+
+  if (mode === "ssim" && (width | height) & 15) {
+    throw new Error("Invalid ImageData dimensions for ssim mode");
+  }
+
   const wRatio = diff.width / width;
   const lRatio = d8l / b8l;
   if (diff.height !== height || wRatio !== lRatio || (wRatio !== 1 && wRatio !== 3)) {
     throw new Error("Invalid diff ImageData dimensions");
   }
+
 
   const diffType = d8l === b8l ? DiffOnly : SideBySide;
   const bBuffer = baseline8.buffer;
@@ -47,7 +54,7 @@ export const diffImageDatas = (
   const diff32 = new Uint32Array(dBuffer, 0, d8l >> 2);
   // maximum acceptable square distance between two colors;
   // 35215 is the maximum possible value for the YIQ difference metric
-  const deltaThreshold = options.threshold * options.threshold * 35215;
+  const deltaThreshold = threshold * threshold * 35215;
 
   let b8i = 0;
   let b32i = 0;
@@ -75,96 +82,211 @@ export const diffImageDatas = (
   const isDarkTheme = averageBrightness < 128;
   const color32Added = isDarkTheme ? COLOR32_ADDED : COLOR32_REMOVED;
   const color32Removed = isDarkTheme ? COLOR32_REMOVED : COLOR32_ADDED;
+  const color32Minimap = enableMinimap ? COLOR32_MINIMAP : 0;
 
-  // Diff every pixel
-  b8i = 0;
-  const miniHeight = Math.ceil(height / MINIMAP_SCALE);
-  const miniWidth = Math.ceil(width / MINIMAP_SCALE);
-  const miniMap = new Uint8ClampedArray(miniWidth * miniHeight);
   const d32iPadding = diffType === SideBySide ? width : 0;
   const d32iWidth = d32iPadding * 2 + width;
-  const maxDimension = Math.max(width, height);
-  const maxMiniDimension = Math.max(miniWidth, miniHeight);
-  const axisMiniIndex = new Uint32Array(maxDimension);
 
-  let miniIndex = 0;
-  for (let i = 0; i < maxMiniDimension; i++) {
-    axisMiniIndex.fill(i, miniIndex, Math.min(miniIndex + MINIMAP_SCALE, maxDimension));
-    miniIndex += MINIMAP_SCALE;
-  }
+  if (mode === "ssim") {
+    // SSIM diff by NxN patch
+    const ssimPad = 64;
+    const ssimPad2 = ssimPad * ssimPad;
+    const ssimPad2_1 = ssimPad2 - 1;
 
-  for (let y = 0; y < height; y++) {
-    const miniIndexY = axisMiniIndex[y] * miniWidth;
-    // For side-by-side diff, copy the baseline and candidate on the sides
-    if (d32iPadding > 0) {
-      diff32.set(new Uint32Array(bBuffer, b8i, width), d32i);
-      d32i += width;
-      diff32.set(new Uint32Array(cBuffer, b8i, width), d32i + width);
+    // Prepare the diff buffer
+    if (diffType === SideBySide) {
+      for (let y = 0; y < height; y++) {
+        const index32 = y * width;
+        const diffIndex32 = index32 * 3;
+        const baseline32Span = new Uint32Array(baseline32.buffer, y * width * 4, width);
+        diff32.set(baseline32Span, diffIndex32);
+        const candidate32Span = new Uint32Array(candidate32.buffer, y * width * 4, width);
+        diff32.set(candidate32Span, diffIndex32 + width + width);
+      }
     }
 
-    let hashIndex = (y ^ HASH_SPREAD) * HASH_SPREAD;
-    for (let x = 0; x < width; x++, d32i++, b32i++, b8i += 4, hashIndex++) {
-      // Quick check against the Uint32
-      if (baseline32[b32i] === candidate32[b32i]) {
-        continue;
+    // prepare patch offsets to walk within the patches
+    const patchOffsets8 = [];
+    const patchOffsets32 = [];
+    const patchOffsetsDiff32 = [];
+    const patchDiff = [];;
+    for (let y = 0; y < ssimPad; y++) {
+      for (let x = 0; x < ssimPad; x++) {
+        patchOffsetsDiff32.push(x + y * d32iWidth)
+        patchOffsets32.push(x + y * width);
+        patchOffsets8.push((x + y * width) * 4);
       }
+    }
+    // const patchOffsets8 = patchOffsets32.map(v => v * 4);
 
-      // Get the r,g,b -> y,i,q => YIQ square delta
-      const dr = candidate8[b8i] - baseline8[b8i];
-      const dg = candidate8[b8i + 1] - baseline8[b8i + 1];
-      const db = candidate8[b8i + 2] - baseline8[b8i + 2];
+    // SSIM constants
+    const K1 = 0.01;
+    const K2 = 0.03;
+    const C1 = (K1 * 255) ** 2;
+    const C2 = (K2 * 255) ** 2;
+    // Walk each patch, track the lowest SSIM aka lowest similarity
+    let lowestSsim = 1;
+    let diffCount = 0;
+    const threshold255 = threshold * 255;
+    for (let y = 0; y < height; y += ssimPad) {
+      for (let x = 0; x < width; x += ssimPad) {
+        const index32 = x + y * width;
 
-      const dy = dr * 0.29889531 + dg * 0.58662247 + db * 0.11448223;
-      const di = dr * 0.59597799 - dg * 0.27417610 - db * 0.32180189;
-      const dq = dr * 0.21147017 - dg * 0.52261711 + db * 0.31114694;
-
-      const delta = dy * dy * 0.5053 + di * di * 0.299 + dq * dq * 0.1957;
-      if (delta > deltaThreshold) {
-        const miniIndex = miniIndexY + axisMiniIndex[x];
-        miniMap[miniIndex]++;
-        diffCount++;
-        const dyAbs = Math.abs(dy);
-        cumulatedDiff += dyAbs;
-        diff32[d32i] =
-          (dy > 0 ? color32Added : color32Removed) +
-          (Math.min(192, dyAbs * 8) << 24);
-
-        if (hash === 0) {
-          hashStart = hashIndex;
+        // Quick check using RGBA32 values
+        let breakAndComputeSsim = false;
+        for (let i = 0; i < ssimPad2 && !breakAndComputeSsim; i++) {
+          const indexPlusOffset32 = index32 + patchOffsets32[i];
+          breakAndComputeSsim = baseline32[indexPlusOffset32] != candidate32[indexPlusOffset32];
         }
-        hash += hashIndex;
-      }
-    }
-    d32i += d32iPadding;
-  }
-  hash -= hashStart;
-  cumulatedDiff /= 256;
-
-  // Apply minimap overlay
-  if (options.enableMinimap) {
-    for (let i = 0; i < miniWidth * miniHeight; i++) {
-      const value = miniMap[i]
-      if (value > 0) {
-        const miniX = i % miniWidth;
-        const miniY = i / miniWidth | 0;
-        const x0 = miniX * MINIMAP_SCALE
-        const x1 = Math.min(x0 + MINIMAP_SCALE, width);
-        const y0 = miniY * MINIMAP_SCALE
-        const y1 = Math.min(y0 + MINIMAP_SCALE, height);
-        d32i = x0 + y0 * d32iWidth + d32iPadding;
-        const d32iYinc = d32iWidth - x1 + x0;
-        for (let y = y0; y < y1; y++) {
-          for (let x = x0; x < x1; x++) {
-            diff32[d32i++] |= COLOR32_MINIMAP;
+        if (breakAndComputeSsim) {
+          // walk patch on 8bits valuse to compute the Y, and SSIM
+          // Single pass computation
+          const index8 = index32 * 4;
+          let sumB = 0, sumC = 0, sumBB = 0, sumCC = 0, sumBC = 0;
+          for (let i = 0; i < ssimPad2; i++) {
+            const indexPlusOffset8 = index8 + patchOffsets8[i];
+            const b = baseline8[indexPlusOffset8] * 0.299 + baseline8[indexPlusOffset8 + 1] * 0.587 + baseline8[indexPlusOffset8 + 2] * 0.114;
+            const c = candidate8[indexPlusOffset8] * 0.299 + candidate8[indexPlusOffset8 + 1] * 0.587 + candidate8[indexPlusOffset8 + 2] * 0.114;
+            patchDiff[i] = c - b;
+            sumB += b;
+            sumC += c;
+            sumBB += b * b;
+            sumCC += c * c;
+            sumBC += b * c;
           }
-          d32i += d32iYinc;
+          // Compute means
+          const meanB = sumB / ssimPad2;
+          const meanC = sumC / ssimPad2;
+          // Compute variances and covariance
+          const varB = (sumBB - ssimPad2 * meanB * meanB) / ssimPad2_1;
+          const varC = (sumCC - ssimPad2 * meanC * meanC) / ssimPad2_1;
+          const covBC = (sumBC - ssimPad2 * meanB * meanC) / ssimPad2_1;
+          // Compute SSIM
+          const numerator = (2 * meanB * meanC + C1) * (2 * covBC + C2);
+          const denominator = (meanB * meanB + meanC * meanC + C1) * (varB + varC + C2);
+          const ssim = numerator / denominator;
+          // track the lowest ssim score = lowest (local) similarity
+          if (ssim < 1 - threshold) {
+            // Update the diff32 buffer with red/green diff + minimap
+            const diffIndex32 = x + y * d32iWidth + d32iPadding;
+            diffCount++;
+            for (let i = 0; i < ssimPad2; i++) {
+              const dy = patchDiff[i];
+              const dyAbs = Math.abs(dy);
+              if (dyAbs > threshold255) {
+                diffCount++;
+                diff32[diffIndex32 + patchOffsetsDiff32[i]] = (
+                  (dy > 0 ? color32Added : color32Removed) +
+                  (Math.min(192, dyAbs * 2) << 24)
+                ) | color32Minimap;
+                const hashIndex = (y ^ HASH_SPREAD) * HASH_SPREAD + (x ^ HASH_SPREAD) + i;
+                if (hash === 0) {
+                  hashStart = hashIndex;
+                }
+                hash += hashIndex;
+              } else {
+                diff32[diffIndex32 + patchOffsetsDiff32[i]] = color32Minimap;
+              }
+            }
+            if (ssim < lowestSsim) {
+              lowestSsim = ssim;
+            }
+          }
         }
       }
     }
-  }
+    if (lowestSsim < 1) {
+      hash -= hashStart;
+      return { diff: diffCount, cumulatedDiff: lowestSsim, hash };
+    }
+  } else { // Diff every pixel
+    b8i = 0;
+    const miniHeight = Math.ceil(height / MINIMAP_SCALE);
+    const miniWidth = Math.ceil(width / MINIMAP_SCALE);
+    const miniMap = new Uint8ClampedArray(miniWidth * miniHeight);
+    const maxDimension = Math.max(width, height);
+    const maxMiniDimension = Math.max(miniWidth, miniHeight);
+    const axisMiniIndex = new Uint32Array(maxDimension);
 
-  if (cumulatedDiff > options.cumulatedThreshold) {
-    return { diff: diffCount, cumulatedDiff, hash };
+    let miniIndex = 0;
+    for (let i = 0; i < maxMiniDimension; i++) {
+      axisMiniIndex.fill(i, miniIndex, Math.min(miniIndex + MINIMAP_SCALE, maxDimension));
+      miniIndex += MINIMAP_SCALE;
+    }
+
+    for (let y = 0; y < height; y++) {
+      const miniIndexY = axisMiniIndex[y] * miniWidth;
+      // For side-by-side diff, copy the baseline and candidate on the sides
+      if (d32iPadding > 0) {
+        diff32.set(new Uint32Array(bBuffer, b8i, width), d32i);
+        d32i += width;
+        diff32.set(new Uint32Array(cBuffer, b8i, width), d32i + width);
+      }
+
+      let hashIndex = (y ^ HASH_SPREAD) * HASH_SPREAD;
+      for (let x = 0; x < width; x++, d32i++, b32i++, b8i += 4, hashIndex++) {
+        // Quick check against the Uint32
+        if (baseline32[b32i] === candidate32[b32i]) {
+          continue;
+        }
+
+        // Get the r,g,b -> y,i,q => YIQ square delta
+        const dr = candidate8[b8i] - baseline8[b8i];
+        const dg = candidate8[b8i + 1] - baseline8[b8i + 1];
+        const db = candidate8[b8i + 2] - baseline8[b8i + 2];
+
+        const dy = dr * 0.29889531 + dg * 0.58662247 + db * 0.11448223;
+        const di = dr * 0.59597799 - dg * 0.27417610 - db * 0.32180189;
+        const dq = dr * 0.21147017 - dg * 0.52261711 + db * 0.31114694;
+
+        const delta = dy * dy * 0.5053 + di * di * 0.299 + dq * dq * 0.1957;
+        if (delta > deltaThreshold) {
+          const miniIndex = miniIndexY + axisMiniIndex[x];
+          miniMap[miniIndex]++;
+          diffCount++;
+          const dyAbs = Math.abs(dy);
+          cumulatedDiff += dyAbs;
+          diff32[d32i] =
+            (dy > 0 ? color32Added : color32Removed) +
+            (Math.min(192, dyAbs * 8) << 24);
+
+          if (hash === 0) {
+            hashStart = hashIndex;
+          }
+          hash += hashIndex;
+        }
+      }
+      d32i += d32iPadding;
+    }
+    hash -= hashStart;
+    cumulatedDiff /= 256;
+
+    // Apply minimap overlay
+    if (enableMinimap) {
+      for (let i = 0; i < miniWidth * miniHeight; i++) {
+        const value = miniMap[i]
+        if (value > 0) {
+          const miniX = i % miniWidth;
+          const miniY = i / miniWidth | 0;
+          const x0 = miniX * MINIMAP_SCALE
+          const x1 = Math.min(x0 + MINIMAP_SCALE, width);
+          const y0 = miniY * MINIMAP_SCALE
+          const y1 = Math.min(y0 + MINIMAP_SCALE, height);
+          d32i = x0 + y0 * d32iWidth + d32iPadding;
+          const d32iYinc = d32iWidth - x1 + x0;
+          for (let y = y0; y < y1; y++) {
+            for (let x = x0; x < x1; x++) {
+              diff32[d32i++] |= COLOR32_MINIMAP;
+            }
+            d32i += d32iYinc;
+          }
+        }
+      }
+    }
+
+    if (cumulatedDiff > cumulatedThreshold) {
+      return { diff: diffCount, cumulatedDiff, hash };
+    }
   }
 
   return { diff: 0, cumulatedDiff: 0, hash: 0 };
@@ -176,7 +298,12 @@ export const diff = (
   diff8: Uint8Array | Uint8ClampedArray,
   width: number,
   height: number,
-  options: Options
+  options: Options = {
+    threshold: 0.03,
+    cumulatedThreshold: 0.5,
+    enableMinimap: false,
+    mode: "basic"
+  }
 ): Result => diffImageDatas({ width, height, data: baseline8 } as ImageData,
   { width, height, data: candidate8 } as ImageData,
   { width: width * diff8.length / baseline8.length, height, data: diff8 } as ImageData, options);
